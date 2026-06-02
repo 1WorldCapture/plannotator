@@ -15,7 +15,17 @@ function isStartAnnotationMessage(message: unknown): message is StartAnnotationM
 
 const activeJobs = new Set<Promise<void>>();
 
-async function runClipboardAnnotationJob(message: StartAnnotationMessage): Promise<void> {
+async function runClipboardAnnotationJob(
+  message: StartAnnotationMessage,
+  reportStartup: (response: StartAnnotationResponse) => void,
+): Promise<void> {
+  let startupReported = false;
+  const reportOnce = (response: StartAnnotationResponse): void => {
+    if (startupReported) return;
+    startupReported = true;
+    reportStartup(response);
+  };
+
   const response = await sendNativeRequest(
     {
       type: "annotateClipboard",
@@ -23,22 +33,28 @@ async function runClipboardAnnotationJob(message: StartAnnotationMessage): Promi
       source: message.source,
     },
     {
-      onReady: url => openAdjacentPlannotatorTab(url, message.tab),
+      onReady: async url => {
+        await openAdjacentPlannotatorTab(url, message.tab);
+        reportOnce({ ok: true });
+      },
     },
   );
 
   if (!response.ok) {
     console.error(`[ClipMark] Native host failed: ${response.error}`);
+    reportOnce({ ok: false, error: response.error });
+    return;
   }
+
+  reportOnce({ ok: true });
 }
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (!isStartAnnotationMessage(message)) return false;
 
-  const job = runClipboardAnnotationJob(message);
+  const job = runClipboardAnnotationJob(message, sendResponse);
   activeJobs.add(job);
   job.finally(() => activeJobs.delete(job));
 
-  sendResponse({ ok: true } satisfies StartAnnotationResponse);
-  return false;
+  return true;
 });
