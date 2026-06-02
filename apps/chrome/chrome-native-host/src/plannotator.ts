@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
-import { existsSync, readFileSync, unlinkSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, unlinkSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
-import { delimiter, join } from "node:path";
+import { delimiter, dirname, join } from "node:path";
 import { randomUUID } from "node:crypto";
 import type { AnnotateClipboardRequest, NativeHostFinalMessage } from "./request";
 
@@ -25,6 +25,16 @@ type ClipboardDecision =
 
 const DEFAULT_READY_TIMEOUT_MS = 15_000;
 const PLANNOTATOR_INSTALL_MESSAGE = "Plannotator CLI is not installed. Install it first: curl -fsSL https://plannotator.ai/install.sh | bash";
+const DEBUG_LOG_PATH = process.env.PLANNOTATOR_CHROME_HOST_LOG || join(homedir(), ".plannotator", "chrome-native-host.log");
+
+function debugLog(message: string): void {
+  try {
+    mkdirSync(dirname(DEBUG_LOG_PATH), { recursive: true });
+    appendFileSync(DEBUG_LOG_PATH, `${new Date().toISOString()} ${message}\n`);
+  } catch {
+    // Logging must never interfere with Native Messaging stdout.
+  }
+}
 
 export function parseClipboardDecision(raw: string): ClipboardDecision | null {
   try {
@@ -68,7 +78,8 @@ async function writeProcessStdin(command: string, args: string[], text: string):
 
 export async function writeSystemClipboard(text: string): Promise<void> {
   if (process.platform === "darwin") {
-    await writeProcessStdin("pbcopy", [], text);
+    const pbcopy = existsSync("/usr/bin/pbcopy") ? "/usr/bin/pbcopy" : "pbcopy";
+    await writeProcessStdin(pbcopy, [], text);
     return;
   }
 
@@ -79,8 +90,9 @@ export async function writeSystemClipboard(text: string): Promise<void> {
       { command: "xsel", args: ["--clipboard", "--input"] },
     ];
     for (const candidate of candidates) {
-      if (!findExecutableOnPath(candidate.command)) continue;
-      await writeProcessStdin(candidate.command, candidate.args, text);
+      const commandPath = findExecutableOnPath(candidate.command);
+      if (!commandPath) continue;
+      await writeProcessStdin(commandPath, candidate.args, text);
       return;
     }
     throw new Error("No supported clipboard command found. Install wl-copy, xclip, or xsel.");
@@ -154,8 +166,10 @@ export async function runClipboardAnnotation(
   request: AnnotateClipboardRequest,
   options: RunPlannotatorOptions = {},
 ): Promise<NativeHostFinalMessage> {
+  debugLog(`request received type=${request.type} textLength=${request.text.length}`);
   const resolved = resolvePlannotatorCommand(options);
   if (!resolved) {
+    debugLog("plannotator command not found");
     return {
       ok: false,
       type: "error",
@@ -163,6 +177,7 @@ export async function runClipboardAnnotation(
     };
   }
   const { command, args } = resolved;
+  debugLog(`resolved plannotator command=${command} args=${args.join(" ")}`);
   const requireReady = options.requireReady ?? true;
   const readyFile = requireReady
     ? options.readyFile ?? join(tmpdir(), `plannotator-chrome-${process.pid}-${Date.now()}-${randomUUID()}.jsonl`)
@@ -217,6 +232,7 @@ export async function runClipboardAnnotation(
       );
       if (ready.status === "timeout") {
         child.kill();
+        debugLog("ready timeout");
         return {
           ok: false,
           type: "error",
@@ -225,6 +241,7 @@ export async function runClipboardAnnotation(
       }
       if (ready.status === "exited") {
         await exitCodePromise.catch(() => null);
+        debugLog(`exited before ready stderrLength=${stderr.trim().length}`);
         return {
           ok: false,
           type: "error",
@@ -232,9 +249,11 @@ export async function runClipboardAnnotation(
         };
       }
       await options.onReady?.(ready.url);
+      debugLog(`ready url published url=${ready.url}`);
     }
 
     const exitCode = await exitCodePromise;
+    debugLog(`plannotator exited code=${exitCode ?? "unknown"} stdoutLength=${stdout.length} stderrLength=${stderr.length}`);
 
     if (exitCode !== 0) {
       return {
@@ -247,6 +266,7 @@ export async function runClipboardAnnotation(
     const lines = stdout.trim().split(/\r?\n/).filter(Boolean);
     const decision = parseClipboardDecision(lines[lines.length - 1] || "");
     if (!decision) {
+      debugLog(`clipboard decision missing lines=${lines.length}`);
       return {
         ok: false,
         type: "error",
@@ -255,10 +275,13 @@ export async function runClipboardAnnotation(
     }
 
     if (decision.decision === "annotated" && decision.feedback.trim()) {
+      debugLog(`clipboard decision annotated feedbackLength=${decision.feedback.length}`);
       if (options.copyFeedbackToClipboard !== false) {
         try {
           await (options.clipboardWriter || writeSystemClipboard)(decision.feedback);
+          debugLog("feedback copied to system clipboard");
         } catch {
+          debugLog("feedback system clipboard copy failed");
           // The extension still receives feedback and may copy it if its popup is alive.
         }
       }
@@ -270,6 +293,7 @@ export async function runClipboardAnnotation(
     }
 
     if (decision.decision === "approved") {
+      debugLog("clipboard decision approved");
       return {
         ok: true,
         type: "no-feedback",
@@ -277,6 +301,7 @@ export async function runClipboardAnnotation(
       };
     }
 
+    debugLog("clipboard decision dismissed");
     return {
       ok: true,
       type: "no-feedback",

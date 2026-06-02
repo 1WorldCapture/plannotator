@@ -18,6 +18,17 @@ export interface InitiatingTab {
   index?: number;
 }
 
+export interface StartAnnotationMessage {
+  type: "startAnnotateClipboard";
+  text: string;
+  source: NativeSource;
+  tab: InitiatingTab;
+}
+
+export type StartAnnotationResponse =
+  | { ok: true }
+  | { ok: false; error: string };
+
 export type NativeReadyMessage = { ok: true; type: "ready"; url: string };
 
 export type NativeFinalMessage =

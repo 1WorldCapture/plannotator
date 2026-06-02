@@ -1173,7 +1173,7 @@ const App: React.FC = () => {
   const handleAnnotateFeedback = async () => {
     setIsSubmitting(true);
     try {
-      await fetch('/api/feedback', {
+      const res = await fetch('/api/feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1182,8 +1182,10 @@ const App: React.FC = () => {
           codeAnnotations,
         }),
       });
+      if (!res.ok) throw new Error(`Failed to send feedback (${res.status})`);
       setSubmitted('denied'); // reuse 'denied' state for "feedback sent" overlay
-    } catch {
+    } catch (err) {
+      console.error('[plannotator] Send annotations failed:', err);
       setIsSubmitting(false);
     }
   };
@@ -1192,9 +1194,11 @@ const App: React.FC = () => {
   const handleAnnotateApprove = async () => {
     setIsSubmitting(true);
     try {
-      await fetch('/api/approve', { method: 'POST' });
+      const res = await fetch('/api/approve', { method: 'POST' });
+      if (!res.ok) throw new Error(`Failed to approve (${res.status})`);
       setSubmitted('approved');
-    } catch {
+    } catch (err) {
+      console.error('[plannotator] Approve annotation failed:', err);
       setIsSubmitting(false);
     }
   };

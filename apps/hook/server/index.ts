@@ -190,11 +190,65 @@ if (renderHtmlFlag) args.splice(renderHtmlIdx, 1);
 // switching gate mode to structured output only.
 const APPROVED_PLAINTEXT_MARKER = "The user approved.";
 
-function emitAnnotateOutcome(result: {
+function findCommandOnPath(command: string): string | null {
+  const pathValue = process.env.PATH || "";
+  for (const dir of pathValue.split(path.delimiter)) {
+    if (!dir) continue;
+    const candidate = path.join(dir, command);
+    if (existsSync(candidate)) return candidate;
+  }
+  return null;
+}
+
+async function writeProcessStdin(command: string, args: string[], text: string): Promise<void> {
+  const child = Bun.spawn([command, ...args], {
+    stdin: "pipe",
+    stdout: "ignore",
+    stderr: "ignore",
+  });
+  child.stdin.write(text);
+  child.stdin.end();
+  const code = await child.exited;
+  if (code !== 0) throw new Error(`${command} exited with code ${code}`);
+}
+
+async function copyChromeExtensionFeedbackToClipboard(feedback: string): Promise<void> {
+  if (detectedOrigin !== "chrome-extension") return;
+  if (!feedback.trim()) return;
+
+  try {
+    if (process.platform === "darwin") {
+      await writeProcessStdin(existsSync("/usr/bin/pbcopy") ? "/usr/bin/pbcopy" : "pbcopy", [], feedback);
+      return;
+    }
+
+    if (process.platform === "linux") {
+      const candidates: Array<{ command: string; args: string[] }> = [
+        { command: "wl-copy", args: [] },
+        { command: "xclip", args: ["-selection", "clipboard"] },
+        { command: "xsel", args: ["--clipboard", "--input"] },
+      ];
+      for (const candidate of candidates) {
+        const commandPath = findCommandOnPath(candidate.command);
+        if (!commandPath) continue;
+        await writeProcessStdin(commandPath, candidate.args, feedback);
+        return;
+      }
+    }
+  } catch {
+    // Best-effort fallback for Chrome popup/native-host disconnects.
+  }
+}
+
+async function emitAnnotateOutcome(result: {
   feedback: string;
   exit?: boolean;
   approved?: boolean;
-}): void {
+}): Promise<void> {
+  if (!result.approved && !result.exit && result.feedback) {
+    await copyChromeExtensionFeedbackToClipboard(result.feedback);
+  }
+
   if (hookFlag) {
     if (result.approved || result.exit) return;
     if (result.feedback) {
@@ -837,7 +891,7 @@ if (args[0] === "sessions") {
   server.stop();
 
   // Output feedback (captured by slash command)
-  emitAnnotateOutcome(result);
+  await emitAnnotateOutcome(result);
   process.exit(0);
 
 } else if (args[0] === "annotate-last" || args[0] === "last") {
@@ -1004,7 +1058,7 @@ if (args[0] === "sessions") {
 
   server.stop();
 
-  emitAnnotateOutcome(result);
+  await emitAnnotateOutcome(result);
   process.exit(0);
 
 } else if (args[0] === "archive") {
@@ -1191,7 +1245,7 @@ if (args[0] === "sessions") {
   await Bun.sleep(1500);
   server.stop();
 
-  emitAnnotateOutcome(result);
+  await emitAnnotateOutcome(result);
   process.exit(0);
 
 } else if (args[0] === "improve-context") {
