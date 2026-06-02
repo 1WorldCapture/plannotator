@@ -3,7 +3,7 @@
   "name": "ClipMark",
   "short_name": "ClipMark",
   "description": "Send copied clipboard text to Plannotator for annotation, markup, and feedback.",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtkB8Cw4NMBk6EluKVRzjjqct9S9RXKfKbhalvgyKVB/dzXup0e7Vi+FVw9FnQFlrsjQ+QNrr+bqYTYWDnPIYfBwZd9HNCyLFrb/qLq0iJ1xG4oaFiwRLh+QxyhA3lyZ3OjM6Ad9KYxgF65E3HA5Pl+iPnCHN2/aGWL0LKa/tsacFjTVQhHvxQ2ubpL+gY4BTw6XJuL+FJF7pjs23DIOHetZRt7t+YOst8VPXSx8VqzV2bD0CTvK+//bGzj6u1G5uKHXYmNMfdv4c6DvA4/YCon8fYpLJZqXbo6USzvdOTfRrShqsOP9MjO2TrEwyfVGSmB2pNUvY8IH/lxRhtusA9QIDAQAB",
   "permissions": ["activeTab", "clipboardRead", "clipboardWrite", "nativeMessaging", "tabs"],
   "background": {

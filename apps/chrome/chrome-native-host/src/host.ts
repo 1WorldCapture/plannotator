@@ -14,7 +14,18 @@ export async function handleNativeMessage(
   });
 }
 
-if (import.meta.main) {
+function shouldRunNativeHost(): boolean {
+  const argv0 = process.argv[0] || "";
+  const argv1 = process.argv[1] || "";
+  return (
+    import.meta.main ||
+    argv0.endsWith("plannotator-chrome-native-host") ||
+    argv1.endsWith("/host.ts") ||
+    argv1.endsWith("\\host.ts")
+  );
+}
+
+if (shouldRunNativeHost()) {
   try {
     const input = readNativeMessage();
     const response = await handleNativeMessage(input);
