@@ -72,12 +72,33 @@ printf '%s\\n' '{"url":"http://127.0.0.1:19432"}' > "$PLANNOTATOR_READY_FILE"
 printf '%s\\n' '{"decision":"annotated","feedback":"notes"}'
 `);
     const readyUrls: string[] = [];
+    const copied: string[] = [];
 
     await expect(runClipboardAnnotation(
       { type: "annotateClipboard", text: "message" },
-      { command, args: [], onReady: url => readyUrls.push(url) },
+      { command, args: [], onReady: url => readyUrls.push(url), clipboardWriter: text => copied.push(text) },
     )).resolves.toEqual({ ok: true, type: "feedback", feedback: "notes" });
     expect(readyUrls).toEqual(["http://127.0.0.1:19432"]);
+    expect(copied).toEqual(["notes"]);
+  });
+
+  test("still returns submitted feedback when native clipboard copy fails", async () => {
+    const command = fakeCommand(`#!/usr/bin/env sh
+cat >/dev/null
+printf '%s\\n' '{"url":"http://127.0.0.1:19432"}' > "$PLANNOTATOR_READY_FILE"
+printf '%s\\n' '{"decision":"annotated","feedback":"notes"}'
+`);
+
+    await expect(runClipboardAnnotation(
+      { type: "annotateClipboard", text: "message" },
+      {
+        command,
+        args: [],
+        clipboardWriter: () => {
+          throw new Error("copy failed");
+        },
+      },
+    )).resolves.toEqual({ ok: true, type: "feedback", feedback: "notes" });
   });
 
   test("returns no-feedback status for approved sessions", async () => {

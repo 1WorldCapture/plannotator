@@ -14,6 +14,8 @@ export interface RunPlannotatorOptions {
   requireReady?: boolean;
   onReady?: (url: string) => void | Promise<void>;
   lookupInstalledCommand?: boolean;
+  clipboardWriter?: (text: string) => void | Promise<void>;
+  copyFeedbackToClipboard?: boolean;
 }
 
 type ClipboardDecision =
@@ -49,6 +51,42 @@ function findExecutableOnPath(command: string): string | null {
     if (existsSync(candidate)) return candidate;
   }
   return null;
+}
+
+async function writeProcessStdin(command: string, args: string[], text: string): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    const child = spawn(command, args, { stdio: ["pipe", "ignore", "ignore"] });
+    child.on("error", reject);
+    child.on("close", code => {
+      if (code === 0) resolve();
+      else reject(new Error(`${command} exited with code ${code ?? "unknown"}`));
+    });
+    child.stdin.on("error", reject);
+    child.stdin.end(text);
+  });
+}
+
+export async function writeSystemClipboard(text: string): Promise<void> {
+  if (process.platform === "darwin") {
+    await writeProcessStdin("pbcopy", [], text);
+    return;
+  }
+
+  if (process.platform === "linux") {
+    const candidates: Array<{ command: string; args: string[] }> = [
+      { command: "wl-copy", args: [] },
+      { command: "xclip", args: ["-selection", "clipboard"] },
+      { command: "xsel", args: ["--clipboard", "--input"] },
+    ];
+    for (const candidate of candidates) {
+      if (!findExecutableOnPath(candidate.command)) continue;
+      await writeProcessStdin(candidate.command, candidate.args, text);
+      return;
+    }
+    throw new Error("No supported clipboard command found. Install wl-copy, xclip, or xsel.");
+  }
+
+  throw new Error(`Clipboard copy is not supported on ${process.platform}.`);
 }
 
 export function resolvePlannotatorCommand(options: RunPlannotatorOptions = {}): { command: string; args: string[] } | null {
@@ -217,6 +255,13 @@ export async function runClipboardAnnotation(
     }
 
     if (decision.decision === "annotated" && decision.feedback.trim()) {
+      if (options.copyFeedbackToClipboard !== false) {
+        try {
+          await (options.clipboardWriter || writeSystemClipboard)(decision.feedback);
+        } catch {
+          // The extension still receives feedback and may copy it if its popup is alive.
+        }
+      }
       return {
         ok: true,
         type: "feedback",
