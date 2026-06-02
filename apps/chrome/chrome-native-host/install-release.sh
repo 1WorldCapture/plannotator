@@ -14,7 +14,7 @@ Usage: install-chrome-native-host.sh [options]
 Options:
   --version <tag>          Install a specific GitHub release tag. Defaults to latest.
   --extension-id <id>      Chrome extension ID to allow. Defaults to the GitHub Release extension ID.
-  --browser <name>         chrome, chromium, edge, brave, or vivaldi. Default: chrome.
+  --browser <name>         chrome, chrome-for-testing, chromium, arc, edge, brave, vivaldi, tge, or all. Default: chrome.
   --repo <owner/repo>      GitHub repository to download from. Default: 1WorldCapture/plannotator.
   -h, --help               Show this help.
 
@@ -89,12 +89,34 @@ case "$(uname -s)" in
   Darwin)
     OS="darwin"
     CONFIG_BASE="$HOME/Library/Application Support"
+    TGE_CACHE="$CONFIG_BASE/TgeBrowser/browser-cache"
+    TGE_DIRS=""
+    if [ -d "$TGE_CACHE" ]; then
+      for entry in "$TGE_CACHE"/chrome_*; do
+        [ -d "$entry" ] || continue
+        TGE_DIRS="${TGE_DIRS}${entry}/NativeMessagingHosts
+"
+      done
+    fi
     case "$BROWSER" in
-      chrome) MANIFEST_DIR="$CONFIG_BASE/Google/Chrome/NativeMessagingHosts" ;;
-      chromium) MANIFEST_DIR="$CONFIG_BASE/Chromium/NativeMessagingHosts" ;;
-      edge) MANIFEST_DIR="$CONFIG_BASE/Microsoft Edge/NativeMessagingHosts" ;;
-      brave) MANIFEST_DIR="$CONFIG_BASE/BraveSoftware/Brave-Browser/NativeMessagingHosts" ;;
-      vivaldi) MANIFEST_DIR="$CONFIG_BASE/Vivaldi/NativeMessagingHosts" ;;
+      chrome) MANIFEST_DIRS="$CONFIG_BASE/Google/Chrome/NativeMessagingHosts" ;;
+      chrome-for-testing) MANIFEST_DIRS="$CONFIG_BASE/Google/Chrome for Testing/NativeMessagingHosts
+$CONFIG_BASE/Google/ChromeForTesting/NativeMessagingHosts" ;;
+      chromium) MANIFEST_DIRS="$CONFIG_BASE/Chromium/NativeMessagingHosts" ;;
+      arc) MANIFEST_DIRS="$CONFIG_BASE/Arc/User Data/NativeMessagingHosts" ;;
+      edge) MANIFEST_DIRS="$CONFIG_BASE/Microsoft Edge/NativeMessagingHosts" ;;
+      brave) MANIFEST_DIRS="$CONFIG_BASE/BraveSoftware/Brave-Browser/NativeMessagingHosts" ;;
+      vivaldi) MANIFEST_DIRS="$CONFIG_BASE/Vivaldi/NativeMessagingHosts" ;;
+      tge) MANIFEST_DIRS="$TGE_DIRS" ;;
+      all) MANIFEST_DIRS="$CONFIG_BASE/Google/Chrome/NativeMessagingHosts
+$CONFIG_BASE/Google/Chrome for Testing/NativeMessagingHosts
+$CONFIG_BASE/Google/ChromeForTesting/NativeMessagingHosts
+$CONFIG_BASE/Chromium/NativeMessagingHosts
+$CONFIG_BASE/Arc/User Data/NativeMessagingHosts
+$CONFIG_BASE/Microsoft Edge/NativeMessagingHosts
+$CONFIG_BASE/BraveSoftware/Brave-Browser/NativeMessagingHosts
+$CONFIG_BASE/Vivaldi/NativeMessagingHosts
+$TGE_DIRS" ;;
       *) echo "Unsupported browser on macOS: $BROWSER" >&2; exit 1 ;;
     esac
     ;;
@@ -102,11 +124,22 @@ case "$(uname -s)" in
     OS="linux"
     CONFIG_BASE="${XDG_CONFIG_HOME:-$HOME/.config}"
     case "$BROWSER" in
-      chrome) MANIFEST_DIR="$CONFIG_BASE/google-chrome/NativeMessagingHosts" ;;
-      chromium) MANIFEST_DIR="$CONFIG_BASE/chromium/NativeMessagingHosts" ;;
-      edge) MANIFEST_DIR="$CONFIG_BASE/microsoft-edge/NativeMessagingHosts" ;;
-      brave) MANIFEST_DIR="$CONFIG_BASE/BraveSoftware/Brave-Browser/NativeMessagingHosts" ;;
-      vivaldi) MANIFEST_DIR="$CONFIG_BASE/vivaldi/NativeMessagingHosts" ;;
+      chrome) MANIFEST_DIRS="$CONFIG_BASE/google-chrome/NativeMessagingHosts" ;;
+      chrome-for-testing) MANIFEST_DIRS="$CONFIG_BASE/google-chrome-for-testing/NativeMessagingHosts" ;;
+      chromium) MANIFEST_DIRS="$CONFIG_BASE/chromium/NativeMessagingHosts" ;;
+      arc) MANIFEST_DIRS="$CONFIG_BASE/arc/NativeMessagingHosts" ;;
+      edge) MANIFEST_DIRS="$CONFIG_BASE/microsoft-edge/NativeMessagingHosts" ;;
+      brave) MANIFEST_DIRS="$CONFIG_BASE/BraveSoftware/Brave-Browser/NativeMessagingHosts" ;;
+      vivaldi) MANIFEST_DIRS="$CONFIG_BASE/vivaldi/NativeMessagingHosts" ;;
+      tge) MANIFEST_DIRS="$CONFIG_BASE/TgeBrowser/NativeMessagingHosts" ;;
+      all) MANIFEST_DIRS="$CONFIG_BASE/google-chrome/NativeMessagingHosts
+$CONFIG_BASE/google-chrome-for-testing/NativeMessagingHosts
+$CONFIG_BASE/chromium/NativeMessagingHosts
+$CONFIG_BASE/arc/NativeMessagingHosts
+$CONFIG_BASE/microsoft-edge/NativeMessagingHosts
+$CONFIG_BASE/BraveSoftware/Brave-Browser/NativeMessagingHosts
+$CONFIG_BASE/vivaldi/NativeMessagingHosts
+$CONFIG_BASE/TgeBrowser/NativeMessagingHosts" ;;
       *) echo "Unsupported browser on Linux: $BROWSER" >&2; exit 1 ;;
     esac
     ;;
@@ -116,6 +149,11 @@ case "$(uname -s)" in
     exit 1
     ;;
 esac
+
+if [ -z "$MANIFEST_DIRS" ]; then
+  echo "No Native Messaging host directories found for browser: $BROWSER" >&2
+  exit 1
+fi
 
 case "$(uname -m)" in
   arm64|aarch64) ARCH="arm64" ;;
@@ -162,13 +200,16 @@ if [ "$EXPECTED" != "$ACTUAL" ]; then
   exit 1
 fi
 
-mkdir -p "$INSTALL_DIR" "$MANIFEST_DIR"
+mkdir -p "$INSTALL_DIR"
 HOST_PATH="$INSTALL_DIR/plannotator-chrome-native-host"
 cp "$TMP_DIR/$ASSET" "$HOST_PATH"
 chmod 755 "$HOST_PATH"
 
-MANIFEST_PATH="$MANIFEST_DIR/$HOST_NAME.json"
-cat > "$MANIFEST_PATH" <<EOF
+printf '%s\n' "$MANIFEST_DIRS" | while IFS= read -r MANIFEST_DIR; do
+  [ -n "$MANIFEST_DIR" ] || continue
+  mkdir -p "$MANIFEST_DIR"
+  MANIFEST_PATH="$MANIFEST_DIR/$HOST_NAME.json"
+  cat > "$MANIFEST_PATH" <<EOF
 {
   "name": "$HOST_NAME",
   "description": "Plannotator clipboard annotation native host",
@@ -179,10 +220,11 @@ cat > "$MANIFEST_PATH" <<EOF
   ]
 }
 EOF
+  echo "Installed manifest: $MANIFEST_PATH"
+done
 
 echo "Installed $HOST_NAME native host:"
 echo "  Host:      $HOST_PATH"
-echo "  Manifest:  $MANIFEST_PATH"
 echo "  Browser:   $BROWSER"
 echo "  Extension: $EXTENSION_ID"
 echo "  Plannotator CLI: $PLANNOTATOR_CANDIDATE"

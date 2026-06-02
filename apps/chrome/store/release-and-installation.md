@@ -153,6 +153,9 @@ The installer supports macOS and Linux Native Messaging manifest locations for:
 - Microsoft Edge
 - Brave
 - Vivaldi
+- TGE Browser
+
+Use `--browser tge` for TGE Browser, or `--browser all` to write manifests for all supported Chromium-family locations.
 
 Windows Native Messaging registry registration is intentionally deferred until a Windows-specific installer format is selected.
 

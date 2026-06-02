@@ -11,7 +11,7 @@ Usage: install-chrome.sh [options]
 Options:
   --version <tag>          Install a specific GitHub release tag. Defaults to latest.
   --extension-id <id>      Chrome extension ID to allow. Defaults to the GitHub Release extension ID.
-  --browser <name>         chrome, chromium, edge, brave, or vivaldi. Default: chrome.
+  --browser <name>         chrome, chrome-for-testing, chromium, arc, edge, brave, vivaldi, tge, or all. Default: chrome.
   --repo <owner/repo>      GitHub repository to download from. Default: 1WorldCapture/plannotator.
   -h, --help               Show this help.
 

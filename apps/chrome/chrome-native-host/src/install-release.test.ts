@@ -24,4 +24,13 @@ describe("release installer", () => {
     expect(source).toContain("https://github.com/$REPO/releases/download/$VERSION");
     expect(source).toContain("https://github.com/$REPO/releases/latest/download");
   });
+
+  test("supports TGE and all-browser Native Messaging manifest locations", () => {
+    const source = readFileSync(scriptPath, "utf8");
+
+    expect(source).toContain("TgeBrowser/browser-cache");
+    expect(source).toContain("tge) MANIFEST_DIRS=");
+    expect(source).toContain("all) MANIFEST_DIRS=");
+    expect(source).toContain('printf \'%s\\n\' "$MANIFEST_DIRS"');
+  });
 });

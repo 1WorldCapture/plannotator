@@ -21,6 +21,7 @@ describe("combined Chrome release installer", () => {
     expect(source).toContain("PLANNOTATOR_CHROME_BASE_URL");
     expect(source).toContain("--repo");
     expect(source).toContain("--browser");
+    expect(source).toContain("tge");
     expect(source).toContain("--extension-id");
     expect(source).toContain("sh \"$TMP_DIR/install-chrome-extension.sh\" \"$@\"");
     expect(source).toContain("sh \"$TMP_DIR/install-chrome-native-host.sh\" \"$@\"");
