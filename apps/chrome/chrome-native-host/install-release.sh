@@ -204,6 +204,9 @@ mkdir -p "$INSTALL_DIR"
 HOST_PATH="$INSTALL_DIR/plannotator-chrome-native-host"
 cp "$TMP_DIR/$ASSET" "$HOST_PATH"
 chmod 755 "$HOST_PATH"
+if [ "$OS" = "darwin" ] && command -v xattr >/dev/null 2>&1; then
+  xattr -d com.apple.quarantine "$HOST_PATH" 2>/dev/null || true
+fi
 
 printf '%s\n' "$MANIFEST_DIRS" | while IFS= read -r MANIFEST_DIR; do
   [ -n "$MANIFEST_DIR" ] || continue
