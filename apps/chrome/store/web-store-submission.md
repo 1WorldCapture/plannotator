@@ -1,25 +1,25 @@
 # Chrome Web Store Submission
 
-This file is the source of truth for preparing the Plannotator Clipboard Chrome Web Store listing and reviewer notes.
+This file is the source of truth for preparing the ClipMark Chrome Web Store listing and reviewer notes.
 
 ## Listing Copy
 
 ### Extension Name
 
-Plannotator Clipboard
+ClipMark
 
 ### Short Description
 
-Review explicitly copied clipboard text in local Plannotator without reading page content.
+Send copied clipboard text to Plannotator for annotation, markup, and feedback.
 
 ### Detailed Description
 
-Plannotator Clipboard opens text you explicitly copied into a local Plannotator annotation session.
+ClipMark opens text you explicitly copied into a local Plannotator annotation session.
 
 The workflow is intentionally narrow:
 
 1. Copy an AI response or any text using the page's own copy behavior.
-2. Click the Plannotator Clipboard extension icon.
+2. Click the ClipMark extension icon.
 3. The extension previews the clipboard size and asks a local Native Messaging host to start Plannotator.
 4. Plannotator opens in a new Chrome tab next to the page you were using.
 5. If you submit annotation feedback, the extension copies that feedback back to your clipboard.
@@ -66,7 +66,7 @@ Used to capture lightweight source metadata from the initiating tab, such as tit
 
 ## Privacy Disclosure
 
-Plannotator Clipboard does not collect, sell, or transmit user data to Plannotator servers.
+ClipMark does not collect, sell, or transmit user data to Plannotator servers.
 
 The extension reads clipboard text only when the user opens the popup. That text is sent to a local Native Messaging host installed on the user's machine. The local host invokes the installed `plannotator` command. Plannotator opens a local browser session for review.
 
@@ -96,7 +96,7 @@ curl -fsSL https://github.com/1WorldCapture/plannotator/releases/latest/download
 Manual test flow:
 
 1. Copy any non-empty text in Chrome.
-2. Click the Plannotator Clipboard extension icon.
+2. Click the ClipMark extension icon.
 3. Confirm that Plannotator opens in a new active tab adjacent to the current tab.
 4. Submit annotation feedback in Plannotator.
 5. Confirm that the extension copies the returned feedback to the clipboard.
@@ -116,18 +116,16 @@ Manifest icons are generated from `apps/marketing/public/favicon.svg` into:
 
 ### Screenshots
 
-Prepare at least one 1280x800 or 640x400 screenshot showing:
+Store screenshots at 1280×800 covering the full user flow:
 
-- The extension popup after clipboard text is detected.
-- The adjacent Plannotator tab opened from Chrome.
-- Annotation feedback copied back to the clipboard after submission.
+- `apps/chrome/store/screenshots/screenshot-1.png` — Popup after clipboard text is detected.
+- `apps/chrome/store/screenshots/screenshot-2.png` — Plannotator annotation session opened in an adjacent Chrome tab.
+- `apps/chrome/store/screenshots/screenshot-3.png` — Annotation feedback copied back to clipboard after submission.
 
 ### Promotional Images
 
-Prepare Chrome Web Store promotional images if the listing requires or benefits from them:
-
-- Small tile: 440x280
-- Marquee: 1400x560
+- `apps/chrome/store/promo/small-tile.png` — Small tile: 440×280
+- `apps/chrome/store/promo/marquee.png` — Marquee: 1400×560
 
 ## Production Extension ID
 

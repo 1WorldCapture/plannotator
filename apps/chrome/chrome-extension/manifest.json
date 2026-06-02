@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Plannotator Clipboard",
-  "short_name": "Plannotator",
-  "description": "Review explicitly copied clipboard text in local Plannotator without reading page content.",
+  "name": "ClipMark",
+  "short_name": "ClipMark",
+  "description": "Send copied clipboard text to Plannotator for annotation, markup, and feedback.",
   "version": "0.1.0",
   "permissions": ["activeTab", "clipboardRead", "clipboardWrite", "nativeMessaging", "tabs"],
   "icons": {
@@ -12,7 +12,7 @@
     "128": "assets/icons/icon-128.png"
   },
   "action": {
-    "default_title": "Open Clipboard in Plannotator",
+    "default_title": "ClipMark",
     "default_popup": "popup.html",
     "default_icon": {
       "16": "assets/icons/icon-16.png",
