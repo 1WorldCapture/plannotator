@@ -62,7 +62,7 @@ Required repository settings:
 - Workflow permissions allow `contents: write` for release asset uploads.
 - No secrets are required for the current Chrome release workflow.
 
-The workflow uses the built-in `GITHUB_TOKEN` to create a draft release when a matching tag is pushed and no release exists yet.
+The workflow uses the built-in `GITHUB_TOKEN` to create a public release when a matching tag is pushed and no release exists yet.
 
 ## Release Extension ID
 
