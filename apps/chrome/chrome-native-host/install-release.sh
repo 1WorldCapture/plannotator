@@ -3,7 +3,7 @@ set -eu
 
 HOST_NAME="ai.plannotator.clipboard"
 DEFAULT_REPO="1WorldCapture/plannotator"
-PRODUCTION_EXTENSION_ID=""
+RELEASE_EXTENSION_ID="hoblepbiofcahbbaobbfhhfhiihdekan"
 INSTALL_DIR="${PLANNOTATOR_CHROME_HOST_DIR:-$HOME/.local/share/plannotator/chrome-native-host}"
 
 usage() {
@@ -13,7 +13,7 @@ Usage: install-chrome-native-host.sh [options]
 
 Options:
   --version <tag>          Install a specific GitHub release tag. Defaults to latest.
-  --extension-id <id>      Chrome extension ID to allow. Required until the production ID is configured.
+  --extension-id <id>      Chrome extension ID to allow. Defaults to the GitHub Release extension ID.
   --browser <name>         chrome, chromium, edge, brave, or vivaldi. Default: chrome.
   --repo <owner/repo>      GitHub repository to download from. Default: 1WorldCapture/plannotator.
   -h, --help               Show this help.
@@ -26,7 +26,7 @@ EOF
 }
 
 VERSION=""
-EXTENSION_ID="${PLANNOTATOR_CHROME_EXTENSION_ID:-$PRODUCTION_EXTENSION_ID}"
+EXTENSION_ID="${PLANNOTATOR_CHROME_EXTENSION_ID:-$RELEASE_EXTENSION_ID}"
 BROWSER="chrome"
 REPO="${PLANNOTATOR_CHROME_REPO:-$DEFAULT_REPO}"
 
@@ -63,12 +63,8 @@ while [ "$#" -gt 0 ]; do
 done
 
 if ! printf '%s' "$EXTENSION_ID" | grep -Eq '^[a-p]{32}$'; then
-  if [ -z "$PRODUCTION_EXTENSION_ID" ]; then
-    echo "Production Chrome Web Store extension ID is not configured yet." >&2
-    echo "Pass --extension-id <id> for an unpacked or reviewer extension build." >&2
-  else
-    echo "Invalid Chrome extension ID: $EXTENSION_ID" >&2
-  fi
+  echo "Invalid Chrome extension ID: $EXTENSION_ID" >&2
+  echo "Pass --extension-id <id> for a development, forked, or reviewer extension build." >&2
   exit 1
 fi
 
@@ -128,7 +124,9 @@ case "$(uname -m)" in
 esac
 
 ASSET="plannotator-chrome-native-host-$OS-$ARCH"
-if [ -n "$VERSION" ]; then
+if [ -n "${PLANNOTATOR_CHROME_BASE_URL:-}" ]; then
+  BASE_URL="$PLANNOTATOR_CHROME_BASE_URL"
+elif [ -n "$VERSION" ]; then
   BASE_URL="https://github.com/$REPO/releases/download/$VERSION"
 else
   BASE_URL="https://github.com/$REPO/releases/latest/download"

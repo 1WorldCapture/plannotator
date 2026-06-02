@@ -10,12 +10,12 @@ The extension does not inject content scripts, modify provider pages, inspect pa
 apps/chrome/
 ├── chrome-extension/       # Popup-only Chrome extension
 ├── chrome-native-host/     # Chrome Native Messaging host
-└── store/                  # Web Store listing, release, and reviewer docs
+└── store/                  # Release docs and optional Web Store reference material
 ```
 
 ## Production Workflow
 
-Chrome Web Store installs only the browser extension. The Native Messaging host is a separate local executable that users install from GitHub Releases.
+ClipMark is distributed through GitHub Releases as an unpacked Chrome extension plus a local Native Messaging host. Chrome still requires the user to manually load unpacked extensions from `chrome://extensions`; the installer prepares the files and native-host manifest but does not silently enable the browser extension.
 
 The native host is intentionally small: it validates Native Messaging requests, launches the installed `plannotator` command, and streams ready/final responses back to the extension. It does not bundle the Plannotator CLI or browser UI.
 
@@ -27,20 +27,27 @@ Production install flow:
    curl -fsSL https://plannotator.ai/install.sh | bash
    ```
 
-2. Install the Chrome extension from Chrome Web Store.
-3. Install the native host from the Chrome release artifacts:
+2. Install ClipMark extension files and the native host from GitHub Releases:
 
    ```bash
-   curl -fsSL https://github.com/1WorldCapture/plannotator/releases/latest/download/install-chrome-native-host.sh | bash
+   curl -fsSL https://github.com/1WorldCapture/plannotator/releases/latest/download/install-chrome.sh | bash
    ```
 
-Until the Chrome Web Store production extension ID is recorded in `apps/chrome/chrome-native-host/install-release.sh`, pass an explicit extension ID:
+3. Open `chrome://extensions`, enable Developer mode, click Load unpacked, and select:
 
-```bash
-curl -fsSL https://github.com/1WorldCapture/plannotator/releases/latest/download/install-chrome-native-host.sh | bash -s -- --extension-id <extension-id>
+   ```text
+   ~/.local/share/plannotator/chrome-extension/
+   ```
+
+The release extension ID is stable:
+
+```text
+hoblepbiofcahbbaobbfhhfhiihdekan
 ```
 
-The installer currently supports macOS and Linux Native Messaging manifest locations. Windows registration is intentionally deferred until the production extension ID is available and a Windows installer format is selected.
+The native-host installer uses that ID by default. Pass `--extension-id <id>` only for development, forks, or reviewer-specific unpacked builds.
+
+The installer currently supports macOS and Linux Native Messaging manifest locations. Windows registration is intentionally deferred until a Windows-specific installer format is selected.
 
 ## Development Workflow
 
@@ -56,7 +63,7 @@ Load it in Chrome:
 2. Enable Developer mode.
 3. Click Load unpacked.
 4. Select `apps/chrome/chrome-extension/dist`.
-5. Copy the generated extension ID.
+5. Use the release extension ID above unless you intentionally build with a different manifest key.
 
 Build the standalone native host:
 
@@ -67,12 +74,12 @@ bun run --cwd apps/chrome/chrome-native-host build
 Install the native host manifest:
 
 ```bash
-bun apps/chrome/chrome-native-host/install.ts --extension-id <extension-id>
+bun apps/chrome/chrome-native-host/install.ts --extension-id hoblepbiofcahbbaobbfhhfhiihdekan
 ```
 
 The installer writes `ai.plannotator.clipboard.json` to Chrome's Native Messaging host directory on macOS or Linux. It points to the standalone executable at `apps/chrome/chrome-native-host/dist/plannotator-chrome-native-host` when that file exists. In source checkouts without a built executable, it falls back to `apps/chrome/chrome-native-host/bin/plannotator-chrome-native-host`.
 
-Build the Chrome Web Store zip:
+Build the GitHub Release extension zip:
 
 ```bash
 bun run --cwd apps/chrome/chrome-extension package
@@ -81,14 +88,12 @@ bun run --cwd apps/chrome/chrome-extension package
 The package is written to:
 
 ```text
-apps/chrome/chrome-extension/plannotator-clipboard-extension.zip
+apps/chrome/chrome-extension/clipmark-extension.zip
 ```
 
-## Chrome Web Store Submission
+## Optional Chrome Web Store Reference
 
-Use `apps/chrome/store/web-store-submission.md` for listing copy, permission rationale, privacy disclosure text, reviewer instructions, and asset guidance.
-
-The first store submission is also the step that establishes the stable production extension ID. That ID must be copied into the production native-host installer before the no-argument production installer can write a final Native Messaging `allowed_origins` entry.
+Use `apps/chrome/store/web-store-submission.md` only if revisiting a Chrome Web Store submission. GitHub Releases are the production distribution path.
 
 ## GitHub Release Artifacts
 
@@ -96,9 +101,11 @@ Chrome release artifacts are built by `.github/workflows/chrome-release.yml`.
 
 Manual workflow runs validate artifacts without publishing a release. Pushing a `chrome-v*` tag uploads these release assets:
 
-- Chrome Web Store zip
+- `clipmark-extension.zip`
 - Native host binaries for macOS and Linux
 - SHA256 checksum files
+- `install-chrome.sh`
+- `install-chrome-extension.sh`
 - `install-chrome-native-host.sh`
 
 See `apps/chrome/store/release-and-installation.md` for release settings and installer details.
@@ -189,4 +196,4 @@ Errors are returned as:
 }
 ```
 
-For packaged installs, the native host should be installed as a standalone executable and paired with the packaged Plannotator executable. The source-checkout launcher is a development fallback: it runs the host and Plannotator source through Bun so local development does not require a release build.
+For packaged installs, the native host is installed as a standalone executable and invokes the user's installed `plannotator` command. The source-checkout launcher is a development fallback: it runs the host and Plannotator source through Bun so local development does not require a release build.

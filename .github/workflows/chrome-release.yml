@@ -31,8 +31,8 @@ jobs:
       - name: Build Chrome extension package
         run: |
           bun run --cwd apps/chrome/chrome-extension package
-          cp apps/chrome/chrome-extension/plannotator-clipboard-extension.zip .
-          sha256sum plannotator-clipboard-extension.zip > plannotator-clipboard-extension.zip.sha256
+          cp apps/chrome/chrome-extension/clipmark-extension.zip .
+          sha256sum clipmark-extension.zip > clipmark-extension.zip.sha256
 
       - name: Build native host artifacts
         run: |
@@ -51,16 +51,26 @@ jobs:
           cp apps/chrome/chrome-native-host/install-release.sh install-chrome-native-host.sh
           sha256sum install-chrome-native-host.sh > install-chrome-native-host.sh.sha256
 
+          cp apps/chrome/chrome-extension/install-release.sh install-chrome-extension.sh
+          sha256sum install-chrome-extension.sh > install-chrome-extension.sh.sha256
+
+          cp apps/chrome/install-release.sh install-chrome.sh
+          sha256sum install-chrome.sh > install-chrome.sh.sha256
+
       - name: Upload workflow artifacts
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: chrome-release-artifacts
           path: |
-            plannotator-clipboard-extension.zip
-            plannotator-clipboard-extension.zip.sha256
+            clipmark-extension.zip
+            clipmark-extension.zip.sha256
             plannotator-chrome-native-host-*
             install-chrome-native-host.sh
             install-chrome-native-host.sh.sha256
+            install-chrome-extension.sh
+            install-chrome-extension.sh.sha256
+            install-chrome.sh
+            install-chrome.sh.sha256
 
       - name: Upload release assets
         if: startsWith(github.ref, 'refs/tags/chrome-v')
@@ -73,9 +83,13 @@ jobs:
             gh release create "$TAG_NAME" --draft --title "$TAG_NAME" --notes "Chrome extension and native host release artifacts."
           fi
           gh release upload "$TAG_NAME" \
-            plannotator-clipboard-extension.zip \
-            plannotator-clipboard-extension.zip.sha256 \
+            clipmark-extension.zip \
+            clipmark-extension.zip.sha256 \
             plannotator-chrome-native-host-* \
             install-chrome-native-host.sh \
             install-chrome-native-host.sh.sha256 \
+            install-chrome-extension.sh \
+            install-chrome-extension.sh.sha256 \
+            install-chrome.sh \
+            install-chrome.sh.sha256 \
             --clobber

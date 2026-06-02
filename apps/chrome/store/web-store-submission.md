@@ -1,6 +1,6 @@
-# Chrome Web Store Submission
+# Optional Chrome Web Store Submission Reference
 
-This file is the source of truth for preparing the ClipMark Chrome Web Store listing and reviewer notes.
+This file is optional reference material for a future ClipMark Chrome Web Store listing. GitHub Releases are the current production distribution path.
 
 ## Listing Copy
 
@@ -84,10 +84,10 @@ For review, install the Plannotator CLI and native host before testing the exten
 
 ```bash
 curl -fsSL https://plannotator.ai/install.sh | bash
-curl -fsSL https://github.com/1WorldCapture/plannotator/releases/latest/download/install-chrome-native-host.sh | bash
+curl -fsSL https://github.com/1WorldCapture/plannotator/releases/latest/download/install-chrome.sh | bash
 ```
 
-If testing an unpacked or reviewer-specific extension ID before the production Chrome Web Store ID is configured, pass that ID explicitly:
+If testing a reviewer-specific extension ID instead of the GitHub Release extension ID, pass that ID explicitly:
 
 ```bash
 curl -fsSL https://github.com/1WorldCapture/plannotator/releases/latest/download/install-chrome-native-host.sh | bash -s -- --extension-id <extension-id>
@@ -127,12 +127,12 @@ Store screenshots at 1280×800 covering the full user flow:
 - `apps/chrome/store/promo/small-tile.png` — Small tile: 440×280
 - `apps/chrome/store/promo/marquee.png` — Marquee: 1400×560
 
-## Production Extension ID
+## Optional Store Extension ID
 
-Record the Chrome Web Store production extension ID here after the store item is created:
+The GitHub Release extension ID used by production release installers is:
 
 ```text
-TBD
+hoblepbiofcahbbaobbfhhfhiihdekan
 ```
 
-The native-host installer must use that ID by default in the Native Messaging `allowed_origins` entry.
+If a future Chrome Web Store item is created, record that store-assigned ID separately and update only the optional store-specific installation notes.
