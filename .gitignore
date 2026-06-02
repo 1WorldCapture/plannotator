@@ -19,6 +19,9 @@ dist-ssr
 # VS Code extension package
 *.vsix
 
+# Chrome Web Store packages
+apps/chrome/chrome-extension/*.zip
+
 # OpenCode plugin build artifacts (generated from hook/review dist)
 apps/opencode-plugin/plannotator.html
 apps/opencode-plugin/review-editor.html

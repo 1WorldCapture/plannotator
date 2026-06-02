@@ -53,6 +53,33 @@ Version pinning is fully supported from **v0.17.2 onwards**. v0.17.2 is the firs
 
 Every release includes SHA256 checksums (verified automatically) and optional [SLSA build provenance](/docs/reference/verifying-your-install/) attestations.
 
+## Chrome Clipboard Extension
+
+The Chrome clipboard workflow has two install parts:
+
+1. The Chrome extension, installed from Chrome Web Store.
+2. A local Native Messaging host, installed from GitHub Releases.
+
+Install the Plannotator CLI first:
+
+```bash
+curl -fsSL https://plannotator.ai/install.sh | bash
+```
+
+Then install the Chrome native host:
+
+```bash
+curl -fsSL https://github.com/1WorldCapture/plannotator/releases/latest/download/install-chrome-native-host.sh | bash
+```
+
+Before the Chrome Web Store production extension ID is configured, reviewers and local developers must pass the active extension ID explicitly:
+
+```bash
+curl -fsSL https://github.com/1WorldCapture/plannotator/releases/latest/download/install-chrome-native-host.sh | bash -s -- --extension-id <extension-id>
+```
+
+The Chrome extension does not install the native host automatically. Chrome's Native Messaging model requires a separately registered local host manifest.
+
 ## Claude Code
 
 ### Plugin marketplace (recommended)

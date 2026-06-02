@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync, unlinkSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
-import { join } from "node:path";
+import { delimiter, join } from "node:path";
 import { randomUUID } from "node:crypto";
 import type { AnnotateClipboardRequest, NativeHostFinalMessage } from "./request";
 
@@ -13,6 +13,7 @@ export interface RunPlannotatorOptions {
   readyTimeoutMs?: number;
   requireReady?: boolean;
   onReady?: (url: string) => void | Promise<void>;
+  lookupInstalledCommand?: boolean;
 }
 
 type ClipboardDecision =
@@ -21,6 +22,7 @@ type ClipboardDecision =
   | { decision: "dismissed" };
 
 const DEFAULT_READY_TIMEOUT_MS = 15_000;
+const PLANNOTATOR_INSTALL_MESSAGE = "Plannotator CLI is not installed. Install it first: curl -fsSL https://plannotator.ai/install.sh | bash";
 
 export function parseClipboardDecision(raw: string): ClipboardDecision | null {
   try {
@@ -39,10 +41,21 @@ export function parseClipboardDecision(raw: string): ClipboardDecision | null {
   return null;
 }
 
-export function resolvePlannotatorCommand(options: RunPlannotatorOptions = {}): { command: string; args: string[] } {
+function findExecutableOnPath(command: string): string | null {
+  const pathValue = process.env.PATH || "";
+  for (const dir of pathValue.split(delimiter)) {
+    if (!dir) continue;
+    const candidate = join(dir, command);
+    if (existsSync(candidate)) return candidate;
+  }
+  return null;
+}
+
+export function resolvePlannotatorCommand(options: RunPlannotatorOptions = {}): { command: string; args: string[] } | null {
   if (options.command) {
     return { command: options.command, args: options.args || ["annotate-last", "--stdin", "--gate", "--json"] };
   }
+  if (options.lookupInstalledCommand === false) return null;
 
   const installedCandidates = [
     process.env.PLANNOTATOR_BIN,
@@ -58,8 +71,11 @@ export function resolvePlannotatorCommand(options: RunPlannotatorOptions = {}): 
     };
   }
 
+  const pathInstalled = findExecutableOnPath("plannotator");
+  if (!pathInstalled) return null;
+
   return {
-    command: "plannotator",
+    command: pathInstalled,
     args: options.args || ["annotate-last", "--stdin", "--gate", "--json"],
   };
 }
@@ -100,7 +116,15 @@ export async function runClipboardAnnotation(
   request: AnnotateClipboardRequest,
   options: RunPlannotatorOptions = {},
 ): Promise<NativeHostFinalMessage> {
-  const { command, args } = resolvePlannotatorCommand(options);
+  const resolved = resolvePlannotatorCommand(options);
+  if (!resolved) {
+    return {
+      ok: false,
+      type: "error",
+      error: PLANNOTATOR_INSTALL_MESSAGE,
+    };
+  }
+  const { command, args } = resolved;
   const requireReady = options.requireReady ?? true;
   const readyFile = requireReady
     ? options.readyFile ?? join(tmpdir(), `plannotator-chrome-${process.pid}-${Date.now()}-${randomUUID()}.jsonl`)

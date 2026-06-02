@@ -9,8 +9,38 @@ The extension does not inject content scripts, modify provider pages, inspect pa
 ```text
 apps/chrome/
 ├── chrome-extension/       # Popup-only Chrome extension
-└── chrome-native-host/     # Chrome Native Messaging host
+├── chrome-native-host/     # Chrome Native Messaging host
+└── store/                  # Web Store listing, release, and reviewer docs
 ```
+
+## Production Workflow
+
+Chrome Web Store installs only the browser extension. The Native Messaging host is a separate local executable that users install from GitHub Releases.
+
+The native host is intentionally small: it validates Native Messaging requests, launches the installed `plannotator` command, and streams ready/final responses back to the extension. It does not bundle the Plannotator CLI or browser UI.
+
+Production install flow:
+
+1. Install the `plannotator` CLI:
+
+   ```bash
+   curl -fsSL https://plannotator.ai/install.sh | bash
+   ```
+
+2. Install the Chrome extension from Chrome Web Store.
+3. Install the native host from the Chrome release artifacts:
+
+   ```bash
+   curl -fsSL https://github.com/1WorldCapture/plannotator/releases/latest/download/install-chrome-native-host.sh | bash
+   ```
+
+Until the Chrome Web Store production extension ID is recorded in `apps/chrome/chrome-native-host/install-release.sh`, pass an explicit extension ID:
+
+```bash
+curl -fsSL https://github.com/1WorldCapture/plannotator/releases/latest/download/install-chrome-native-host.sh | bash -s -- --extension-id <extension-id>
+```
+
+The installer currently supports macOS and Linux Native Messaging manifest locations. Windows registration is intentionally deferred until the production extension ID is available and a Windows installer format is selected.
 
 ## Development Workflow
 
@@ -41,6 +71,37 @@ bun apps/chrome/chrome-native-host/install.ts --extension-id <extension-id>
 ```
 
 The installer writes `ai.plannotator.clipboard.json` to Chrome's Native Messaging host directory on macOS or Linux. It points to the standalone executable at `apps/chrome/chrome-native-host/dist/plannotator-chrome-native-host` when that file exists. In source checkouts without a built executable, it falls back to `apps/chrome/chrome-native-host/bin/plannotator-chrome-native-host`.
+
+Build the Chrome Web Store zip:
+
+```bash
+bun run --cwd apps/chrome/chrome-extension package
+```
+
+The package is written to:
+
+```text
+apps/chrome/chrome-extension/plannotator-clipboard-extension.zip
+```
+
+## Chrome Web Store Submission
+
+Use `apps/chrome/store/web-store-submission.md` for listing copy, permission rationale, privacy disclosure text, reviewer instructions, and asset guidance.
+
+The first store submission is also the step that establishes the stable production extension ID. That ID must be copied into the production native-host installer before the no-argument production installer can write a final Native Messaging `allowed_origins` entry.
+
+## GitHub Release Artifacts
+
+Chrome release artifacts are built by `.github/workflows/chrome-release.yml`.
+
+Manual workflow runs validate artifacts without publishing a release. Pushing a `chrome-v*` tag uploads these release assets:
+
+- Chrome Web Store zip
+- Native host binaries for macOS and Linux
+- SHA256 checksum files
+- `install-chrome-native-host.sh`
+
+See `apps/chrome/store/release-and-installation.md` for release settings and installer details.
 
 ## User Workflow
 

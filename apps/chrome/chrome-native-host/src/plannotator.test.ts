@@ -42,6 +42,19 @@ exit 0
     else process.env.PLANNOTATOR_BIN = previousBin;
   });
 
+  test("reports install guidance when plannotator CLI is unavailable", async () => {
+    expect(resolvePlannotatorCommand({ lookupInstalledCommand: false })).toBeNull();
+
+    await expect(runClipboardAnnotation(
+      { type: "annotateClipboard", text: "message" },
+      { lookupInstalledCommand: false },
+    )).resolves.toEqual({
+      ok: false,
+      type: "error",
+      error: "Plannotator CLI is not installed. Install it first: curl -fsSL https://plannotator.ai/install.sh | bash",
+    });
+  });
+
   test("parses plannotator annotate-last json decisions", () => {
     expect(parseClipboardDecision('{"decision":"annotated","feedback":"notes"}')).toEqual({
       decision: "annotated",

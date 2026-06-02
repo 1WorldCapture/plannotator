@@ -1,11 +1,24 @@
 {
   "manifest_version": 3,
   "name": "Plannotator Clipboard",
-  "description": "Open explicitly copied clipboard text in Plannotator.",
+  "short_name": "Plannotator",
+  "description": "Review explicitly copied clipboard text in local Plannotator without reading page content.",
   "version": "0.1.0",
   "permissions": ["activeTab", "clipboardRead", "clipboardWrite", "nativeMessaging", "tabs"],
+  "icons": {
+    "16": "assets/icons/icon-16.png",
+    "32": "assets/icons/icon-32.png",
+    "48": "assets/icons/icon-48.png",
+    "128": "assets/icons/icon-128.png"
+  },
   "action": {
     "default_title": "Open Clipboard in Plannotator",
-    "default_popup": "popup.html"
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "assets/icons/icon-16.png",
+      "32": "assets/icons/icon-32.png",
+      "48": "assets/icons/icon-48.png",
+      "128": "assets/icons/icon-128.png"
+    }
   }
 }
