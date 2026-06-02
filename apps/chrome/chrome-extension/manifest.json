@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "Plannotator Clipboard",
+  "description": "Open explicitly copied clipboard text in Plannotator.",
+  "version": "0.1.0",
+  "permissions": ["activeTab", "clipboardRead", "clipboardWrite", "nativeMessaging", "tabs"],
+  "action": {
+    "default_title": "Open Clipboard in Plannotator",
+    "default_popup": "popup.html"
+  }
+}

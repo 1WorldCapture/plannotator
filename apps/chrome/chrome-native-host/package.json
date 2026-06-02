@@ -1,0 +1,13 @@
+{
+  "name": "@plannotator/chrome-native-host",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "bun build src/host.ts --compile --outfile dist/plannotator-chrome-native-host",
+    "test": "bun test src"
+  },
+  "devDependencies": {
+    "bun-types": "^1.3.11",
+    "typescript": "~5.8.2"
+  }
+}
