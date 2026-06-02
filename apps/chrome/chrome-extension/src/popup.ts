@@ -1,4 +1,5 @@
-import { getActiveTabSource, sendNativeRequest } from "./native";
+import { readClipboardText } from "./clipboard";
+import { getActiveTabContext, openAdjacentPlannotatorTab, sendNativeRequest } from "./native";
 import { createClipboardPayload, shouldCopyFeedback } from "./types";
 
 const metaEl = document.getElementById("meta") as HTMLParagraphElement;
@@ -15,7 +16,7 @@ async function openClipboardInPlannotator(): Promise<void> {
 
   let text = "";
   try {
-    text = await navigator.clipboard.readText();
+    text = await readClipboardText();
   } catch (err) {
     setStatus(err instanceof Error ? err.message : "Unable to read clipboard.", "error");
     return;
@@ -31,10 +32,16 @@ async function openClipboardInPlannotator(): Promise<void> {
   metaEl.textContent = `${payload.count.toLocaleString()} characters copied.`;
   setStatus("Opening Plannotator...");
   try {
+    const activeTab = await getActiveTabContext();
     const response = await sendNativeRequest({
       type: "annotateClipboard",
       text: payload.text,
-      source: await getActiveTabSource(),
+      source: activeTab.source,
+    }, {
+      onReady: async url => {
+        await openAdjacentPlannotatorTab(url, activeTab.tab);
+        setStatus("Plannotator opened. Waiting for feedback...");
+      },
     });
 
     if (!response.ok) {

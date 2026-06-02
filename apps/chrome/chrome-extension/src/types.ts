@@ -13,10 +13,21 @@ export interface NativeRequest {
   source?: NativeSource;
 }
 
-export type NativeResponse =
-  | { ok: true; status: "feedback"; feedback: string }
-  | { ok: true; status: "no-feedback"; decision: "approved" | "dismissed" }
-  | { ok: false; error: string };
+export interface InitiatingTab {
+  windowId?: number;
+  index?: number;
+}
+
+export type NativeReadyMessage = { ok: true; type: "ready"; url: string };
+
+export type NativeFinalMessage =
+  | { ok: true; type: "feedback"; feedback: string }
+  | { ok: true; type: "no-feedback"; decision: "approved" | "dismissed" }
+  | { ok: false; type: "error"; error: string };
+
+export type NativeMessage =
+  | NativeReadyMessage
+  | NativeFinalMessage;
 
 export type ClipboardPayload =
   | { ok: true; text: string; count: number }
@@ -41,6 +52,6 @@ export function createClipboardPayload(text: string): ClipboardPayload {
   };
 }
 
-export function shouldCopyFeedback(response: NativeResponse): response is { ok: true; status: "feedback"; feedback: string } {
-  return response.ok === true && response.status === "feedback" && response.feedback.trim() !== "";
+export function shouldCopyFeedback(response: NativeFinalMessage): response is { ok: true; type: "feedback"; feedback: string } {
+  return response.ok === true && response.type === "feedback" && response.feedback.trim() !== "";
 }

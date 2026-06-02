@@ -20,9 +20,9 @@ describe("clipboard payload state", () => {
 
 describe("feedback copy decisions", () => {
   test("copies only non-empty feedback responses", () => {
-    expect(shouldCopyFeedback({ ok: true, status: "feedback", feedback: "notes" })).toBe(true);
-    expect(shouldCopyFeedback({ ok: true, status: "feedback", feedback: "  " })).toBe(false);
-    expect(shouldCopyFeedback({ ok: true, status: "no-feedback", decision: "dismissed" })).toBe(false);
-    expect(shouldCopyFeedback({ ok: false, error: "x" })).toBe(false);
+    expect(shouldCopyFeedback({ ok: true, type: "feedback", feedback: "notes" })).toBe(true);
+    expect(shouldCopyFeedback({ ok: true, type: "feedback", feedback: "  " })).toBe(false);
+    expect(shouldCopyFeedback({ ok: true, type: "no-feedback", decision: "dismissed" })).toBe(false);
+    expect(shouldCopyFeedback({ ok: false, type: "error", error: "x" })).toBe(false);
   });
 });

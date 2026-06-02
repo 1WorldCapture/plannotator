@@ -1,9 +1,26 @@
 declare const chrome: {
   runtime: {
     sendNativeMessage(hostName: string, message: unknown, callback: (response?: unknown) => void): void;
+    connectNative(hostName: string): {
+      postMessage(message: unknown): void;
+      disconnect(): void;
+      onMessage: {
+        addListener(callback: (message: unknown) => void): void;
+      };
+      onDisconnect: {
+        addListener(callback: () => void): void;
+      };
+    };
     lastError?: { message?: string };
   };
   tabs: {
-    query(queryInfo: { active: boolean; currentWindow: boolean }, callback: (tabs: Array<{ url?: string; title?: string }>) => void): void;
+    query(
+      queryInfo: { active: boolean; currentWindow: boolean },
+      callback: (tabs: Array<{ id?: number; url?: string; title?: string; windowId?: number; index?: number }>) => void,
+    ): void;
+    create(
+      createProperties: { url: string; active?: boolean; windowId?: number; index?: number },
+      callback?: (tab?: { id?: number }) => void,
+    ): void;
   };
 };

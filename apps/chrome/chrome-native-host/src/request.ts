@@ -12,10 +12,14 @@ export interface AnnotateClipboardRequest {
   source?: ClipboardSource;
 }
 
-export type NativeHostResponse =
-  | { ok: true; status: "feedback"; feedback: string }
-  | { ok: true; status: "no-feedback"; decision: "approved" | "dismissed" }
-  | { ok: false; error: string };
+export type NativeHostReadyMessage = { ok: true; type: "ready"; url: string };
+
+export type NativeHostFinalMessage =
+  | { ok: true; type: "feedback"; feedback: string }
+  | { ok: true; type: "no-feedback"; decision: "approved" | "dismissed" }
+  | { ok: false; type: "error"; error: string };
+
+export type NativeHostMessage = NativeHostReadyMessage | NativeHostFinalMessage;
 
 export function validateAnnotateClipboardRequest(input: unknown): AnnotateClipboardRequest {
   if (!input || typeof input !== "object") {

@@ -55,16 +55,73 @@ exit 0
   test("returns submitted feedback", async () => {
     const command = fakeCommand(`#!/usr/bin/env sh
 cat >/dev/null
+printf '%s\\n' '{"url":"http://127.0.0.1:19432"}' > "$PLANNOTATOR_READY_FILE"
 printf '%s\\n' '{"decision":"annotated","feedback":"notes"}'
+`);
+    const readyUrls: string[] = [];
+
+    await expect(runClipboardAnnotation(
+      { type: "annotateClipboard", text: "message" },
+      { command, args: [], onReady: url => readyUrls.push(url) },
+    )).resolves.toEqual({ ok: true, type: "feedback", feedback: "notes" });
+    expect(readyUrls).toEqual(["http://127.0.0.1:19432"]);
+  });
+
+  test("returns no-feedback status for approved sessions", async () => {
+    const command = fakeCommand(`#!/usr/bin/env sh
+cat >/dev/null
+printf '%s\\n' '{"url":"http://127.0.0.1:19432"}' > "$PLANNOTATOR_READY_FILE"
+printf '%s\\n' '{"decision":"approved"}'
 `);
 
     await expect(runClipboardAnnotation(
       { type: "annotateClipboard", text: "message" },
       { command, args: [] },
-    )).resolves.toEqual({ ok: true, status: "feedback", feedback: "notes" });
+    )).resolves.toEqual({ ok: true, type: "no-feedback", decision: "approved" });
   });
 
-  test("returns no-feedback status for approved sessions", async () => {
+  test("passes ready-file browser suppression environment and removes the ready file", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "plannotator-ready-test-"));
+    tempDirs.push(dir);
+    const readyFile = join(dir, "ready.jsonl");
+    const command = fakeCommand(`#!/usr/bin/env sh
+cat >/dev/null
+if [ "$PLANNOTATOR_SKIP_BROWSER_OPEN" != "1" ]; then
+  echo "skip flag missing" >&2
+  exit 9
+fi
+if [ "$PLANNOTATOR_ORIGIN" != "chrome-extension" ]; then
+  echo "origin missing" >&2
+  exit 9
+fi
+printf '%s\\n' '{"url":"http://127.0.0.1:5678"}' > "$PLANNOTATOR_READY_FILE"
+printf '%s\\n' '{"decision":"dismissed"}'
+`);
+
+    await expect(runClipboardAnnotation(
+      { type: "annotateClipboard", text: "message" },
+      { command, args: [], readyFile },
+    )).resolves.toEqual({ ok: true, type: "no-feedback", decision: "dismissed" });
+    expect(existsSync(readyFile)).toBe(false);
+  });
+
+  test("ignores malformed ready lines until a valid URL is published", async () => {
+    const command = fakeCommand(`#!/usr/bin/env sh
+cat >/dev/null
+printf '%s\\n' 'not-json' > "$PLANNOTATOR_READY_FILE"
+printf '%s\\n' '{"url":"http://127.0.0.1:2468"}' >> "$PLANNOTATOR_READY_FILE"
+printf '%s\\n' '{"decision":"approved"}'
+`);
+    const readyUrls: string[] = [];
+
+    await expect(runClipboardAnnotation(
+      { type: "annotateClipboard", text: "message" },
+      { command, args: [], onReady: url => readyUrls.push(url) },
+    )).resolves.toEqual({ ok: true, type: "no-feedback", decision: "approved" });
+    expect(readyUrls).toEqual(["http://127.0.0.1:2468"]);
+  });
+
+  test("returns an error when plannotator exits before publishing a URL", async () => {
     const command = fakeCommand(`#!/usr/bin/env sh
 cat >/dev/null
 printf '%s\\n' '{"decision":"approved"}'
@@ -73,11 +130,37 @@ printf '%s\\n' '{"decision":"approved"}'
     await expect(runClipboardAnnotation(
       { type: "annotateClipboard", text: "message" },
       { command, args: [] },
-    )).resolves.toEqual({ ok: true, status: "no-feedback", decision: "approved" });
+    )).resolves.toEqual({
+      ok: false,
+      type: "error",
+      error: "Plannotator exited before publishing its browser URL.",
+    });
+  });
+
+  test("returns an error and cleans up when ready publication times out", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "plannotator-ready-timeout-"));
+    tempDirs.push(dir);
+    const readyFile = join(dir, "ready.jsonl");
+    const command = fakeCommand(`#!/usr/bin/env sh
+cat >/dev/null
+sleep 1
+`);
+
+    await expect(runClipboardAnnotation(
+      { type: "annotateClipboard", text: "message" },
+      { command, args: [], readyFile, readyTimeoutMs: 25 },
+    )).resolves.toEqual({
+      ok: false,
+      type: "error",
+      error: "Timed out waiting for Plannotator to publish its browser URL.",
+    });
+    expect(existsSync(readyFile)).toBe(false);
   });
 
   test("returns errors from failed plannotator command", async () => {
     const command = fakeCommand(`#!/usr/bin/env sh
+cat >/dev/null
+printf '%s\\n' '{"url":"http://127.0.0.1:19432"}' > "$PLANNOTATOR_READY_FILE"
 echo failed >&2
 exit 2
 `);
@@ -85,6 +168,6 @@ exit 2
     await expect(runClipboardAnnotation(
       { type: "annotateClipboard", text: "message" },
       { command, args: [] },
-    )).resolves.toEqual({ ok: false, error: "failed" });
+    )).resolves.toEqual({ ok: false, type: "error", error: "failed" });
   });
 });
