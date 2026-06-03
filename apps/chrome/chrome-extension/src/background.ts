@@ -1,5 +1,6 @@
+import { copyTextToClipboard } from "./clipboard-write";
 import { openAdjacentPlannotatorTab, sendNativeRequest } from "./native";
-import type { StartAnnotationMessage, StartAnnotationResponse } from "./types";
+import { shouldCopyFeedback, type StartAnnotationMessage, type StartAnnotationResponse } from "./types";
 
 function isStartAnnotationMessage(message: unknown): message is StartAnnotationMessage {
   if (!message || typeof message !== "object") return false;
@@ -44,6 +45,16 @@ async function runClipboardAnnotationJob(
     console.error(`[ClipMark] Native host failed: ${response.error}`);
     reportOnce({ ok: false, error: response.error });
     return;
+  }
+
+  if (shouldCopyFeedback(response)) {
+    try {
+      await copyTextToClipboard(response.feedback);
+    } catch (err) {
+      // Native host and CLI both still attempt the system clipboard copy; keep
+      // the completed annotation session successful if the extension fallback fails.
+      console.error(`[ClipMark] Extension clipboard copy failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
   }
 
   reportOnce({ ok: true });

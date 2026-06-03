@@ -1,5 +1,6 @@
 declare const chrome: {
   runtime: {
+    getURL(path: string): string;
     sendNativeMessage(hostName: string, message: unknown, callback: (response?: unknown) => void): void;
     sendMessage(message: unknown, callback?: (response?: unknown) => void): void;
     connectNative(hostName: string): {
@@ -22,6 +23,14 @@ declare const chrome: {
       ): void;
     };
     lastError?: { message?: string };
+  };
+  offscreen?: {
+    createDocument(options: {
+      url: string;
+      reasons: Array<"CLIPBOARD">;
+      justification: string;
+    }): Promise<void>;
+    hasDocument?(): Promise<boolean>;
   };
   tabs: {
     query(

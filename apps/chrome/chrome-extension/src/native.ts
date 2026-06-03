@@ -58,7 +58,9 @@ export function sendNativeRequest(
   return new Promise(resolve => {
     let settled = false;
     let sawReady = false;
-    const port = chrome.runtime.connectNative(NATIVE_HOST_NAME);
+    let readyInFlight: Promise<void> | null = null;
+    let queuedFinalResponse: NativeFinalMessage | null = null;
+    let port: ReturnType<typeof chrome.runtime.connectNative> | null = null;
 
     function settle(response: NativeFinalMessage): void {
       if (settled) return;
@@ -66,10 +68,44 @@ export function sendNativeRequest(
       resolve(response);
     }
 
+    function disconnectPort(): void {
+      try {
+        port?.disconnect();
+      } catch {
+        // The port may already be closed by Chrome.
+      }
+    }
+
+    function flushQueuedFinalResponse(): void {
+      if (!queuedFinalResponse) return;
+      const response = queuedFinalResponse;
+      queuedFinalResponse = null;
+      settle(response);
+    }
+
+    function settleAfterReady(response: NativeFinalMessage): void {
+      if (readyInFlight) {
+        queuedFinalResponse ??= response;
+        return;
+      }
+      settle(response);
+    }
+
+    try {
+      port = chrome.runtime.connectNative(NATIVE_HOST_NAME);
+    } catch (err) {
+      settle({
+        ok: false,
+        type: "error",
+        error: err instanceof Error ? err.message : String(err),
+      });
+      return;
+    }
+
     port.onMessage.addListener(message => {
       const normalized = normalizeNativeMessage(message);
       if (!normalized.ok) {
-        settle(normalized);
+        settleAfterReady(normalized);
         return;
       }
 
@@ -84,21 +120,32 @@ export function sendNativeRequest(
             type: "error",
             error: err instanceof Error ? err.message : String(err),
           });
-          port.disconnect();
+          disconnectPort();
           return;
         }
-        Promise.resolve(readyResult).catch(err => {
-          settle({
-            ok: false,
-            type: "error",
-            error: err instanceof Error ? err.message : String(err),
-          });
-          port.disconnect();
+        readyInFlight = Promise.resolve(readyResult).then(
+          () => {
+            readyInFlight = null;
+            flushQueuedFinalResponse();
+          },
+          err => {
+            readyInFlight = null;
+            queuedFinalResponse = null;
+            settle({
+              ok: false,
+              type: "error",
+              error: err instanceof Error ? err.message : String(err),
+            });
+            disconnectPort();
+          },
+        );
+        readyInFlight.catch(() => {
+          // Rejection is handled above; keep the promise observed for test runtimes.
         });
         return;
       }
 
-      settle(normalized);
+      settleAfterReady(normalized);
     });
 
     port.onDisconnect.addListener(() => {
@@ -107,7 +154,7 @@ export function sendNativeRequest(
         (sawReady
           ? "Native host disconnected before returning a final response."
           : "Native host disconnected before opening Plannotator.");
-      settle({ ok: false, type: "error", error });
+      settleAfterReady({ ok: false, type: "error", error });
     });
 
     try {

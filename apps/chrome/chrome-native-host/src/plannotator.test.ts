@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { chmodSync, existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { parseClipboardDecision, resolvePlannotatorCommand, runClipboardAnnotation } from "./plannotator";
+import { parseClipboardDecision, parseClipboardDecisionOutput, resolvePlannotatorCommand, runClipboardAnnotation } from "./plannotator";
 
 let tempDirs: string[] = [];
 
@@ -65,6 +65,17 @@ exit 0
     expect(parseClipboardDecision("not json")).toBeNull();
   });
 
+  test("finds the final annotate-last json decision even when stdout has logs after it", () => {
+    expect(parseClipboardDecisionOutput([
+      "starting plannotator",
+      '{"decision":"annotated","feedback":"notes"}',
+      "cleanup complete",
+    ].join("\n"))).toEqual({
+      decision: "annotated",
+      feedback: "notes",
+    });
+  });
+
   test("returns submitted feedback", async () => {
     const command = fakeCommand(`#!/usr/bin/env sh
 cat >/dev/null
@@ -79,6 +90,23 @@ printf '%s\\n' '{"decision":"annotated","feedback":"notes"}'
       { command, args: [], onReady: url => readyUrls.push(url), clipboardWriter: text => copied.push(text) },
     )).resolves.toEqual({ ok: true, type: "feedback", feedback: "notes" });
     expect(readyUrls).toEqual(["http://127.0.0.1:19432"]);
+    expect(copied).toEqual(["notes"]);
+  });
+
+  test("returns submitted feedback when plannotator logs after the json decision", async () => {
+    const command = fakeCommand(`#!/usr/bin/env sh
+cat >/dev/null
+printf '%s\n' '{"url":"http://127.0.0.1:19432"}' > "$PLANNOTATOR_READY_FILE"
+printf '%s\n' 'starting plannotator'
+printf '%s\n' '{"decision":"annotated","feedback":"notes"}'
+printf '%s\n' 'cleanup complete'
+`);
+    const copied: string[] = [];
+
+    await expect(runClipboardAnnotation(
+      { type: "annotateClipboard", text: "message" },
+      { command, args: [], clipboardWriter: text => copied.push(text) },
+    )).resolves.toEqual({ ok: true, type: "feedback", feedback: "notes" });
     expect(copied).toEqual(["notes"]);
   });
 

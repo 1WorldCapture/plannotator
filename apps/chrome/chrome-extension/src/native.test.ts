@@ -17,6 +17,7 @@ afterEach(() => {
 function installChromeMock(options: {
   tabs?: Array<{ url?: string; title?: string; windowId?: number; index?: number }>;
   tabCreateError?: string;
+  connectNativeError?: string;
 } = {}) {
   let messageListener: MessageListener | null = null;
   let disconnectListener: DisconnectListener | null = null;
@@ -26,24 +27,28 @@ function installChromeMock(options: {
   (globalThis as any).chrome = {
     runtime: {
       lastError: undefined,
-      connectNative: () => ({
-        postMessage: (message: unknown) => {
-          postedMessages.push(message);
-        },
-        disconnect: () => {
-          disconnectListener?.();
-        },
-        onMessage: {
-          addListener: (callback: MessageListener) => {
-            messageListener = callback;
+      connectNative: () => {
+        if (options.connectNativeError) throw new Error(options.connectNativeError);
+
+        return {
+          postMessage: (message: unknown) => {
+            postedMessages.push(message);
           },
-        },
-        onDisconnect: {
-          addListener: (callback: DisconnectListener) => {
-            disconnectListener = callback;
+          disconnect: () => {
+            disconnectListener?.();
           },
-        },
-      }),
+          onMessage: {
+            addListener: (callback: MessageListener) => {
+              messageListener = callback;
+            },
+          },
+          onDisconnect: {
+            addListener: (callback: DisconnectListener) => {
+              disconnectListener = callback;
+            },
+          },
+        };
+      },
     },
     tabs: {
       query: (_queryInfo: unknown, callback: (tabs: typeof options.tabs) => void) => {
@@ -136,6 +141,17 @@ describe("Native Messaging port flow", () => {
     expect(readyUrls).toEqual(["http://127.0.0.1:19432"]);
   });
 
+  test("reports native host connection startup failures", async () => {
+    installChromeMock({ connectNativeError: "Specified native messaging host not found." });
+
+    await expect(sendNativeRequest({ type: "annotateClipboard", text: "message" }))
+      .resolves.toEqual({
+        ok: false,
+        type: "error",
+        error: "Specified native messaging host not found.",
+      });
+  });
+
   test("resolves no-feedback decisions", async () => {
     const chromeMock = installChromeMock();
     const resultPromise = sendNativeRequest({ type: "annotateClipboard", text: "message" });
@@ -175,6 +191,33 @@ describe("Native Messaging port flow", () => {
       type: "error",
       error: "tab create failed",
     });
+  });
+
+  test("does not resolve final responses before the ready callback finishes", async () => {
+    const chromeMock = installChromeMock();
+    let finishReady: (() => void) | null = null;
+    let resolved = false;
+
+    const resultPromise = sendNativeRequest(
+      { type: "annotateClipboard", text: "message" },
+      {
+        onReady: () => new Promise<void>(resolve => {
+          finishReady = resolve;
+        }),
+      },
+    );
+    resultPromise.then(() => {
+      resolved = true;
+    });
+
+    chromeMock.emitMessage({ ok: true, type: "ready", url: "http://127.0.0.1:19432" });
+    chromeMock.emitMessage({ ok: true, type: "feedback", feedback: "notes" });
+    await Promise.resolve();
+
+    expect(resolved).toBe(false);
+    finishReady?.();
+
+    await expect(resultPromise).resolves.toEqual({ ok: true, type: "feedback", feedback: "notes" });
   });
 });
 

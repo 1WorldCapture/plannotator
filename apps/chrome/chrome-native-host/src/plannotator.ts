@@ -53,6 +53,15 @@ export function parseClipboardDecision(raw: string): ClipboardDecision | null {
   return null;
 }
 
+export function parseClipboardDecisionOutput(raw: string): ClipboardDecision | null {
+  const lines = raw.trim().split(/\r?\n/).filter(Boolean);
+  for (let index = lines.length - 1; index >= 0; index--) {
+    const decision = parseClipboardDecision(lines[index]);
+    if (decision) return decision;
+  }
+  return null;
+}
+
 function findExecutableOnPath(command: string): string | null {
   const pathValue = process.env.PATH || "";
   for (const dir of pathValue.split(delimiter)) {
@@ -263,9 +272,9 @@ export async function runClipboardAnnotation(
       };
     }
 
-    const lines = stdout.trim().split(/\r?\n/).filter(Boolean);
-    const decision = parseClipboardDecision(lines[lines.length - 1] || "");
+    const decision = parseClipboardDecisionOutput(stdout);
     if (!decision) {
+      const lines = stdout.trim().split(/\r?\n/).filter(Boolean);
       debugLog(`clipboard decision missing lines=${lines.length}`);
       return {
         ok: false,

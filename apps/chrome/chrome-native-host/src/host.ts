@@ -1,3 +1,4 @@
+import { basename } from "node:path";
 import { readNativeMessage, writeNativeMessage } from "./protocol";
 import { validateAnnotateClipboardRequest, type NativeHostFinalMessage } from "./request";
 import { runClipboardAnnotation } from "./plannotator";
@@ -14,14 +15,17 @@ export async function handleNativeMessage(
   });
 }
 
-function shouldRunNativeHost(): boolean {
-  const argv0 = process.argv[0] || "";
-  const argv1 = process.argv[1] || "";
+export function shouldRunNativeHost(
+  argv: string[] = process.argv,
+  metaMain = import.meta.main,
+): boolean {
+  const executable = basename(argv[0] || "");
+  const script = argv[1] || "";
   return (
-    import.meta.main ||
-    argv0.endsWith("plannotator-chrome-native-host") ||
-    argv1.endsWith("/host.ts") ||
-    argv1.endsWith("\\host.ts")
+    metaMain ||
+    /^plannotator-chrome-native-host(?:-.+)?$/.test(executable) ||
+    script.endsWith("/host.ts") ||
+    script.endsWith("\\host.ts")
   );
 }
 
