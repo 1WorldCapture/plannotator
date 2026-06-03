@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "bun build src/host.ts --compile --outfile dist/plannotator-chrome-native-host",
+    "build": "bun build src/host.ts --target=bun --outfile dist/plannotator-chrome-native-host-bundle.js",
     "test": "bun test src"
   },
   "devDependencies": {
