@@ -30,15 +30,20 @@ export function shouldRunNativeHost(
 }
 
 if (shouldRunNativeHost()) {
+  const keepAlive = setInterval(() => {}, 60_000);
   try {
-    const input = readNativeMessage();
+    const input = await readNativeMessage();
     const response = await handleNativeMessage(input);
     writeNativeMessage(response);
+    await new Promise(resolve => setTimeout(resolve, 100));
   } catch (err) {
     writeNativeMessage({
       ok: false,
       type: "error",
       error: err instanceof Error ? err.message : String(err),
     } satisfies NativeHostFinalMessage);
+    await new Promise(resolve => setTimeout(resolve, 100));
+  } finally {
+    clearInterval(keepAlive);
   }
 }

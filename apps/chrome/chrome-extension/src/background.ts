@@ -51,8 +51,6 @@ async function runClipboardAnnotationJob(
     try {
       await copyTextToClipboard(response.feedback);
     } catch (err) {
-      // Native host and CLI both still attempt the system clipboard copy; keep
-      // the completed annotation session successful if the extension fallback fails.
       console.error(`[ClipMark] Extension clipboard copy failed: ${err instanceof Error ? err.message : String(err)}`);
     }
   }

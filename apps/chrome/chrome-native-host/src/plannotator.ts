@@ -73,22 +73,38 @@ function findExecutableOnPath(command: string): string | null {
 }
 
 async function writeProcessStdin(command: string, args: string[], text: string): Promise<void> {
+  debugLog(`writeProcessStdin: command=${command} textLength=${text.length}`);
   await new Promise<void>((resolve, reject) => {
-    const child = spawn(command, args, { stdio: ["pipe", "ignore", "ignore"] });
-    child.on("error", reject);
+    const child = spawn(command, args, { stdio: ["pipe", "pipe", "pipe"] });
+    let stdout = "";
+    let stderr = "";
+    child.stdout?.on("data", (chunk) => { stdout += chunk; });
+    child.stderr?.on("data", (chunk) => { stderr += chunk; });
+    child.on("error", (err) => {
+      debugLog(`writeProcessStdin error: ${err.message}`);
+      reject(err);
+    });
     child.on("close", code => {
+      debugLog(`writeProcessStdin exited: code=${code} stdout=${stdout.length} stderr=${stderr.length}`);
+      if (stderr) debugLog(`writeProcessStdin stderr: ${stderr}`);
       if (code === 0) resolve();
       else reject(new Error(`${command} exited with code ${code ?? "unknown"}`));
     });
-    child.stdin.on("error", reject);
+    child.stdin.on("error", (err) => {
+      debugLog(`writeProcessStdin stdin error: ${err.message}`);
+      reject(err);
+    });
     child.stdin.end(text);
   });
 }
 
 export async function writeSystemClipboard(text: string): Promise<void> {
+  debugLog(`writeSystemClipboard: platform=${process.platform} textLength=${text.length} textPreview=${text.substring(0, 50)}`);
   if (process.platform === "darwin") {
     const pbcopy = existsSync("/usr/bin/pbcopy") ? "/usr/bin/pbcopy" : "pbcopy";
+    debugLog(`writeSystemClipboard: using pbcopy at ${pbcopy}`);
     await writeProcessStdin(pbcopy, [], text);
+    debugLog(`writeSystemClipboard: pbcopy completed successfully`);
     return;
   }
 
@@ -284,13 +300,13 @@ export async function runClipboardAnnotation(
     }
 
     if (decision.decision === "annotated" && decision.feedback.trim()) {
-      debugLog(`clipboard decision annotated feedbackLength=${decision.feedback.length}`);
+      debugLog(`clipboard decision annotated feedbackLength=${decision.feedback.length} feedbackPreview=${decision.feedback.substring(0, 50)}`);
       if (options.copyFeedbackToClipboard !== false) {
         try {
           await (options.clipboardWriter || writeSystemClipboard)(decision.feedback);
           debugLog("feedback copied to system clipboard");
-        } catch {
-          debugLog("feedback system clipboard copy failed");
+        } catch (err) {
+          debugLog(`feedback system clipboard copy failed: ${err instanceof Error ? err.message : String(err)}`);
           // The extension still receives feedback and may copy it if its popup is alive.
         }
       }

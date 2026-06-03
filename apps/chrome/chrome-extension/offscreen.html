@@ -3,8 +3,17 @@
   <head>
     <meta charset="utf-8">
     <title>ClipMark Clipboard Writer</title>
+    <style>
+      #clipboard-text {
+        position: fixed;
+        left: -9999px;
+        top: 0;
+        opacity: 0;
+      }
+    </style>
   </head>
   <body>
+    <textarea id="clipboard-text" aria-hidden="true"></textarea>
     <script type="module" src="offscreen.js"></script>
   </body>
 </html>
